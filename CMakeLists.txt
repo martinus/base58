@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
 # Note: update this to your new project's name and version
 project(
-  Greeter
+  Base58
   VERSION 1.0
   LANGUAGES CXX
 )
@@ -47,19 +47,19 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/
 # ---- Create library ----
 
 # Note: for header-only libraries change all PUBLIC flags to INTERFACE and create an interface
-# target: add_library(Greeter INTERFACE)
-add_library(Greeter ${headers} ${sources})
+# target: add_library(Base58 INTERFACE)
+add_library(Base58 ${headers} ${sources})
 
-set_target_properties(Greeter PROPERTIES CXX_STANDARD 17)
+set_target_properties(Base58 PROPERTIES CXX_STANDARD 17)
 
 # being a cross-platform target, we enforce standards conformance on MSVC
-target_compile_options(Greeter PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive>")
+target_compile_options(Base58 PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive>")
 
 # Link dependencies
-target_link_libraries(Greeter PUBLIC fmt::fmt)
+target_link_libraries(Base58 PUBLIC fmt::fmt)
 
 target_include_directories(
-  Greeter PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  Base58 PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                  $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
 )
 

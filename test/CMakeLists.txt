@@ -1,11 +1,14 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-project(GreeterTests LANGUAGES CXX)
+project(Base58Tests LANGUAGES CXX)
 
 # ---- Options ----
 
 option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
 option(TEST_INSTALLED_VERSION "Test the version found by find_package" OFF)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # generate compile_commands.json
+
 
 # --- Import tools ----
 
@@ -21,10 +24,17 @@ CPMAddPackage(
   GIT_TAG 2.4.5
 )
 
+CPMAddPackage(
+  NAME nanobench
+  GITHUB_REPOSITORY martinus/nanobench
+  GIT_TAG v4.3.0
+)
+
+
 if(TEST_INSTALLED_VERSION)
-  find_package(Greeter REQUIRED)
+  find_package(Base58 REQUIRED)
 else()
-  CPMAddPackage(NAME Greeter SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+  CPMAddPackage(NAME Base58 SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 endif()
 
 CPMAddPackage(
@@ -38,33 +48,33 @@ CPMAddPackage(
 # ---- Create binary ----
 
 file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
-add_executable(GreeterTests ${sources})
-target_link_libraries(GreeterTests doctest::doctest Greeter::Greeter)
-set_target_properties(GreeterTests PROPERTIES CXX_STANDARD 17)
+add_executable(Base58Tests ${sources})
+target_link_libraries(Base58Tests doctest::doctest nanobench Base58::Base58)
+set_target_properties(Base58Tests PROPERTIES CXX_STANDARD 17)
 
 # enable compiler warnings
 if(NOT TEST_INSTALLED_VERSION)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(Greeter PUBLIC -Wall -Wpedantic -Wextra -Werror)
+    target_compile_options(Base58 PUBLIC -Wall -Wpedantic -Wextra -Werror)
   elseif(MSVC)
-    target_compile_options(Greeter PUBLIC /W4 /WX)
-    target_compile_definitions(GreeterTests PUBLIC DOCTEST_CONFIG_USE_STD_HEADERS)
+    target_compile_options(Base58 PUBLIC /W4 /WX)
+    target_compile_definitions(Base58Tests PUBLIC DOCTEST_CONFIG_USE_STD_HEADERS)
   endif()
 endif()
 
-# ---- Add GreeterTests ----
+# ---- Add Base58Tests ----
 
 enable_testing()
 
 # Note: doctest and similar testing frameworks can automatically configure CMake tests. For other
-# testing frameworks add the tests target instead: add_test(NAME greeterTests COMMAND GreeterTests)
+# testing frameworks add the tests target instead: add_test(NAME Base58Tests COMMAND Base58Tests)
 
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
-doctest_discover_tests(GreeterTests)
+doctest_discover_tests(Base58Tests)
 
 # ---- code coverage ----
 
 if(ENABLE_TEST_COVERAGE)
-  target_compile_options(Greeter PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)
-  target_link_options(Greeter PUBLIC -fprofile-arcs -ftest-coverage)
+  target_compile_options(Base58 PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)
+  target_link_options(Base58 PUBLIC -fprofile-arcs -ftest-coverage)
 endif()
