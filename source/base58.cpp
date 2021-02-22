@@ -1,8 +1,5 @@
 #include <base58/base58.h>
 
-#include <cstdint>
-#include <utility>
-
 namespace ankerl::base58 {
 
 void encode(void const* const input_data, size_t input_size, std::string& out) {
@@ -121,7 +118,7 @@ void encode(void const* const input_data, size_t input_size, std::string& out) {
     out.resize(static_cast<size_t>(b58_text_it - out.data()));
 }
 
-void decode(void const* base58_data, size_t size, std::string& out) {
+void decode(char const* base58_data, size_t size, std::string& out) {
     (void)base58_data;
 
     auto const old_size = out.size();
