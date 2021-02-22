@@ -27,7 +27,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME nanobench
   GITHUB_REPOSITORY martinus/nanobench
-  GIT_TAG v4.3.0
+  GIT_TAG master
 )
 
 
