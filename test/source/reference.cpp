@@ -13,7 +13,7 @@ static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnop
 // modifications done are:
 // * replaced span with pointer and inputSize
 // * str argument instead of return value
-void encodeReference(void const* anyInput, size_t inputSize, std::string& str) {
+std::string encodeReference(void const* anyInput, size_t inputSize) {
     auto const* input = static_cast<uint8_t const*>(anyInput);
 
     // Skip & count leading zeroes.
@@ -49,7 +49,10 @@ void encodeReference(void const* anyInput, size_t inputSize, std::string& str) {
     while (it != b58.end() && *it == 0)
         it++;
     // Translate the result into a string.
+    std::string str;
+    str.reserve(zeroes + (b58.end() - it));
     str.assign(zeroes, '1');
     while (it != b58.end())
         str += pszBase58[*(it++)];
+    return str;
 }
