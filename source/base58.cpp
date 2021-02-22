@@ -3,39 +3,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace {
-
-// preallocates the necessary size to decode base58 into binary.
-template <typename Container>
-size_t prealloacate_decode(size_t input_size, Container& out) {
-    auto const old_size = out.size();
-
-    // Usually the resulting binary data requires less space than base58, but in the worst case (base58 is just 1'es), each 1 is
-    // decoded into. So we use just input_size as the guess for how many bytes we need.
-    //
-    // We could do some processing by counting the number of initial ones, so we can make a very exact estimate of the number
-    // of bytes, but that doesn't seem to be worth it.
-    out.resize(old_size + input_size + 1);
-    return old_size;
-}
-
-// Decodes into out, returns number of bytes for out.
-size_t decode_base58(void const* base58_data, size_t input_size, uint8_t* out) {
-    (void)base58_data;
-    (void)input_size;
-    (void)out;
-    return 0;
-}
-
-} // namespace
-
 namespace ankerl::base58 {
-
-std::string encode(void const* binary_data, size_t size) {
-    std::string str;
-    encode(binary_data, size, str);
-    return str;
-}
 
 void encode(void const* const input_data, size_t input_size, std::string& out) {
     static_assert(sizeof(*out.data()) == 1U);
@@ -154,15 +122,16 @@ void encode(void const* const input_data, size_t input_size, std::string& out) {
 }
 
 void decode(void const* base58_data, size_t size, std::string& out) {
-    auto old_size = prealloacate_decode(size, out);
-    auto decoded_size = decode_base58(base58_data, size, reinterpret_cast<uint8_t*>(out.data() + old_size));
-    out.resize(old_size * decoded_size);
-}
+    (void)base58_data;
 
-std::string decode(void const* base58_data, size_t size) {
-    std::string str;
-    decode(base58_data, size, str);
-    return str;
+    auto const old_size = out.size();
+
+    // Usually the resulting binary data requires less space than base58, but in the worst case (base58 is just 1'es), each 1 is
+    // decoded into. So we use just input_size as the guess for how many bytes we need.
+    //
+    // We could do some processing by counting the number of initial ones, so we can make a very exact estimate of the number
+    // of bytes, but that doesn't seem to be worth it.
+    out.resize(old_size + size + 1);
 }
 
 } // namespace ankerl::base58
