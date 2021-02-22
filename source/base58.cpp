@@ -71,39 +71,61 @@ void encode(void const* const input_data, size_t input_size, std::string& out) {
     // Initially the b58 number is empty, it grows in each loop.
     auto* b58_begin_minus1 = b58_end - 1;
 
-    // we can process process 7 bytes in bulk. Since the algorithm complexity is quadratic, it is faster to do the remainder
+    // The conversion algorithm works by repeatedly calculating
+    //
+    //     b58 = b58 * 256 + inputbyte
+    //
+    // until all input bytes have been processed. Both the input bytes and b58 bytes are in big endian format, so leftmost byte is
+    // most significant byte (MSB) and rightmost the least significant byte (LSB). Each b58*256 + inputbyte operation is done by
+    // iterating from LSB to MSB of b58 while multiplying each digit, adding inputbytes, and outputting the remainder of result
+    // % 58. The remainder is carried over to the next b58 digit.
+    //
+    // That way we do not need bignum support and can work with arbitrarily large numbers, with a runtime complexity of O(n^2).
+    //
+    // This loop can be easily extended to process multiple bytes at once: To process 7 input bytes, we can instead calculate
+    //
+    //     b58 = b58 * 256^7 + inputbytes
+    //
+    // The algorithm is still O(n^2), but lot less multiplications have to be performed. How many numbers can we ideally choose
+    // for maximum performance? 7 bytes. That way we can operate on 64 bit words without risking an overflow. For the worst case
+    // of having only 0xFF as input bytes, and already 57 = 0x39 stored in b58, the maximum size for the carryover is
+    //
+    //     max_carry = 0x39 * 0x0100'0000'0000'0000 + 0x00FF'FFFF'FFFF'FFFF
+    //     max_carry = 0x39FF'FFFF'FFFF'FFFF.
+    //
+    // Given max_carry of 0x39FF'FFFF'FFFF'FFFF we output carry % 58 = 58, and continue with a carry of carry=carry/58 =
+    // 0x00FF'FFFF'FFFF'FFFF. We are at the same carry value as before, so no overflow happening here.
+
+    // Since the algorithm complexity is quadratic and runtime increases as b58 gets larger, it is faster to do the remainder
     // first so that the intermediate numbers are kept smaller. For example, when processing 15 input bytes, we split them into 15
     // = 1+7+7 bytes instead of 7+7+1.
     size_t num_bytes_to_process = ((input_size - 1U) % 7U) + 1U;
 
     // Process the bytes.
     while (input != input_end) {
-        // Encode at most 7 input bytes at once without risking an overflow. The largest value carry
-        // can possibly have is by only 0xFF as input bytes, and 0x39 in b58:
-        // 256^7-1 + 256^7 * 0x39 = 0x39FF'FFFF'FFFF'FFFF, which still fits into the 64bit.
+        // take num_bytes_to_process input bytes and store them into carry.
         auto carry = uint64_t();
-        auto multiplier = uint64_t(1);
         for (auto num_bytes = size_t(); num_bytes < num_bytes_to_process; ++num_bytes) {
-            multiplier <<= 8U;
             carry <<= 8U;
-            carry += *input;
-            ++input;
+            carry += *input++;
         }
+        auto const multiplier = uint64_t(1) << (num_bytes_to_process * 8U);
 
         // for all remaining input data we process 7 bytes at once.
         num_bytes_to_process = 7U;
 
-        // Apply "b58 = b58 * multiplier + carry".
+        // Apply "b58 = b58 * multiplier + carry". Process until all b58 digits have been processed, then finish until carry is 0.
         auto* it = b58_end - 1U;
 
-        // process all bytes from b58
+        // process all digits from b58
         while (it > b58_begin_minus1) {
             carry += multiplier * static_cast<uint8_t>(*it);
             *it-- = static_cast<char>(carry % 58U);
             carry /= 58;
         }
 
-        // finish with the carry. At most this will be executed ln(0x39FF'FFFF'FFFF'FFFF) / ln(58) = 10.6 = 11 times
+        // finish with the carry. At most this will be executed ln(0x39FF'FFFF'FFFF'FFFF) / ln(58) = 10.6 = 11 times.
+        // Unrolling this loop manually seems to help performance in my benchmarks
         while (carry > 58 * 58) {
             *it-- = static_cast<char>(carry % 58U);
             carry /= 58;
@@ -119,13 +141,15 @@ void encode(void const* const input_data, size_t input_size, std::string& out) {
         b58_begin_minus1 = it;
     }
 
-    // Translate the result into a string.
+    // Now b58_begin_minus1 + 1 to b58_end stores the whole number in base 58. Finally translate this number into a string based
+    // on the alphabet.
     auto it = b58_begin_minus1 + 1;
     auto* b58_text_it = out.data() + out.size() - expected_encoded_size;
     while (it < b58_end) {
         *b58_text_it++ = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"[static_cast<uint8_t>(*it++)];
     }
 
+    // Remove any leftover bytes
     out.resize(static_cast<size_t>(b58_text_it - out.data()));
 }
 
