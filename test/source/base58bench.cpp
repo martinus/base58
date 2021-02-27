@@ -7,7 +7,7 @@
 
 #include <string>
 
-TEST_CASE("base58_bench") {
+TEST_CASE("base58_encode") {
     // create some random data
     auto input = std::string();
     auto rng = ankerl::nanobench::Rng();
@@ -32,6 +32,29 @@ TEST_CASE("base58_bench") {
 
     REQUIRE(referenceOutput == ankerlOutput);
 }
+
+TEST_CASE("base58_decode") {
+    // create some random data
+    auto input = std::string();
+    auto rng = ankerl::nanobench::Rng();
+    for (size_t i = 0; i < 32; ++i) {
+        input.push_back(static_cast<char>(rng()));
+    }
+
+    auto strBase58 = std::string();
+    ankerl::base58::encode(input.data(), input.size(), strBase58);
+
+    auto decoded = std::string();
+    auto bench = ankerl::nanobench::Bench();
+    bench.run("base58::decodeReference", [&] {
+        decoded.clear();
+        //ankerl::base58::decode(strBase58.data(), strBase58.size(), decoded);
+        decodeReference(strBase58.c_str(), decoded, 100000);
+    });
+
+    REQUIRE(decoded == input);
+}
+
 
 // see https://nanobench.ankerl.com/tutorial.html#asymptotic-complexity
 //
