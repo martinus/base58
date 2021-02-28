@@ -1,5 +1,7 @@
 #include <base58/base58.h>
 
+#include <array>
+
 namespace ankerl::base58 {
 
 void encode(void const* const input_data, size_t input_size, std::string& out) {
@@ -24,9 +26,9 @@ void encode(void const* const input_data, size_t input_size, std::string& out) {
     // Even better, we can choose a divisor that is a power of two so we can replace the division with a shift, which is even
     // faster: ln(256)/ln(58) * 2^8 = 349.6. To be on the safe side we round up and add 1.
     //
-    // For 32bit size_t this will overflow at (2^32-1)/350 + 1 = 12271336. So you can't encode more than ~12 MB. But who would do
+    // For 32bit size_t this will overflow at (2^32255)/350 + 1 = 12271336. So you can't encode more than ~12 MB. But who would do
     // that anyways?
-    auto const expected_encoded_size = ((input_size * 350) >> 8U) + 1U;
+    auto const expected_encoded_size = ((input_size * 350U) >> 8U) + 1U;
 
     // Instead of creating a temporary vector/string, we just operate in-place on the given string. This safes us at least one
     // malloc.
@@ -118,17 +120,60 @@ void encode(void const* const input_data, size_t input_size, std::string& out) {
     out.resize(static_cast<size_t>(b58_text_it - out.data()));
 }
 
-void decode(char const* base58_data, size_t size, std::string& out) {
-    (void)base58_data;
+static constexpr auto charToBase58 = std::array<uint8_t, 123>{{
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0,
+    1,   2,   3,   4,   5,   6,   7,   8,   255, 255, 255, 255, 255, 255, 255, 9,   10,  11,  12,  13,  14,  15,  16,  255, 17,
+    18,  19,  20,  21,  255, 22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  255, 255, 255, 255, 255, 255, 33,  34,  35,
+    36,  37,  38,  39,  40,  41,  42,  43,  255, 44,  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  55,  56,  57,
+}};
 
-    auto const old_size = out.size();
+static constexpr auto multipliers = std::array<uint64_t, 9>{{
+    uint64_t(58),
+    uint64_t(58) * 58U,
+    uint64_t(58) * 58U * 58U,
+    uint64_t(58) * 58U * 58U * 58U,
+    uint64_t(58) * 58U * 58U * 58U * 58U * 58U,
+    uint64_t(58) * 58U * 58U * 58U * 58U * 58U * 58U,
+    uint64_t(58) * 58U * 58U * 58U * 58U * 58U * 58U * 58U,
+    uint64_t(58) * 58U * 58U * 58U * 58U * 58U * 58U * 58U * 58U,
+    uint64_t(58) * 58U * 58U * 58U * 58U * 58U * 58U * 58U * 58U * 58U,
+}};
 
-    // Usually the resulting binary data requires less space than base58, but in the worst case (base58 is just 1'es), each 1 is
-    // decoded into. So we use just input_size as the guess for how many bytes we need.
-    //
-    // We could do some processing by counting the number of initial ones, so we can make a very exact estimate of the number
-    // of bytes, but that doesn't seem to be worth it.
-    out.resize(old_size + size + 1);
+// Assumes input is exactly a base58 number, no leading spaces.
+// No input checks are done. You could do that in a preprocessing step.
+void decode(char const* base58_data, size_t base58_size, std::string& out) {
+    // Skip & count leading 1's. These are simply decoded as 0.
+    auto const* input = base58_data;
+    auto const* base58_end = base58_data + base58_size;
+    while (input != base58_end && *input == '1') {
+        ++input;
+    }
+    auto skipped_leading_ones_size = static_cast<size_t>(input - base58_data);
+    out.append(skipped_leading_ones_size, 0);
+    base58_size -= skipped_leading_ones_size;
+
+    // log(58) / log(256) * 2^9 = 374.91
+    auto const expected_decoded_size = ((base58_size * 375U) >> 9U) + 1U;
+
+    // append enough space
+    out.append(expected_decoded_size, 0);
+
+    size_t num_b58_to_process = ((base58_size - 1U) % 9U) + 1U;
+
+    while (input != base58_end) {
+        auto carry = uint64_t();
+        for (auto num_b58 = size_t(); num_b58 < num_b58_to_process; ++num_b58) {
+            carry *= 58U;
+            auto b58 = *input++;
+            carry += charToBase58[static_cast<uint8_t>(b58)];
+        }
+        auto const multiplier = multipliers[num_b58_to_process];
+        num_b58_to_process = 9U;
+
+        (void)multiplier;
+        // auto* it =
+    }
 }
 
 } // namespace ankerl::base58

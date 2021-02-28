@@ -46,15 +46,19 @@ TEST_CASE("base58_decode") {
 
     auto decoded = std::string();
     auto bench = ankerl::nanobench::Bench();
-    bench.run("base58::decodeReference", [&] {
+    bench.run("decodeReference", [&] {
         decoded.clear();
-        //ankerl::base58::decode(strBase58.data(), strBase58.size(), decoded);
         decodeReference(strBase58.c_str(), decoded, 100000);
+    });
+    REQUIRE(decoded == input);
+
+    bench.run("base58::decode", [&] {
+        decoded.clear();
+        ankerl::base58::decode(strBase58.data(), strBase58.size(), decoded);
     });
 
     REQUIRE(decoded == input);
 }
-
 
 // see https://nanobench.ankerl.com/tutorial.html#asymptotic-complexity
 //
